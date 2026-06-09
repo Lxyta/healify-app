@@ -1,0 +1,74 @@
+# ========================
+# 隐私 / 敏感文件
+# ========================
+.env
+*.local
+**/settings.local.json
+**/credentials*
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+
+# ========================
+# Claude Code
+# ========================
+.claude/settings.local.json
+.claude/notes.md
+.claude/memory/
+.claude/worktrees/
+
+# ========================
+# Python
+# ========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+.pytest_cache/
+*.manifest
+*.spec
+venv/
+.venv/
+env/
+
+# ========================
+# Node / Frontend
+# ========================
+node_modules/
+.npm
+.eslintcache
+*.tsbuildinfo
+.next/
+out/
+dist/
+
+# ========================
+# IDE / 编辑器
+# ========================
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ========================
+# Docker
+# ========================
+docker-compose.override.yml
+
+# ========================
+# 日志 / 临时文件
+# ========================
+*.log
+*.tmp
+*.temp
+logs/

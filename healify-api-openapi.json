@@ -1,0 +1,819 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Healify — 智能健康助手 API",
+    "description": "AI 驱动的健康管理 Web 应用，提供个性化饮食与运动计划生成、体重追踪与智能优化。\n\n**认证说明**：除 `/api/auth/**` 外，所有接口需在请求头携带 JWT Token：`Authorization: Bearer <token>`",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Healify Team"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Spring Boot 后端"
+    },
+    {
+      "url": "http://localhost:8000",
+      "description": "FastAPI AI 服务（内部调用）"
+    }
+  ],
+  "tags": [
+    { "name": "认证", "description": "用户注册与登录" },
+    { "name": "健康档案", "description": "用户健康信息管理" },
+    { "name": "体重记录", "description": "体重记录与 AI 分析优化" },
+    { "name": "计划管理", "description": "AI 饮食+运动计划生成与管理" },
+    { "name": "AI 服务", "description": "FastAPI AI 内部服务（供后端调用）" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "登录后获取的 JWT Token"
+      }
+    },
+    "schemas": {
+      "LoginRequest": {
+        "type": "object",
+        "required": ["username", "password"],
+        "properties": {
+          "username": { "type": "string", "description": "用户名", "example": "zhangsan" },
+          "password": { "type": "string", "description": "密码", "minLength": 6, "example": "123456" }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["username", "email", "password"],
+        "properties": {
+          "username": { "type": "string", "description": "用户名", "minLength": 3, "maxLength": 50, "example": "zhangsan" },
+          "email": { "type": "string", "format": "email", "description": "邮箱", "example": "zhangsan@example.com" },
+          "password": { "type": "string", "description": "密码", "minLength": 6, "maxLength": 100, "example": "123456" },
+          "nickname": { "type": "string", "description": "昵称（可选，默认同用户名）", "example": "张三" }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string", "description": "JWT Token" },
+          "userId": { "type": "integer", "description": "用户 ID", "example": 1 },
+          "username": { "type": "string", "description": "用户名", "example": "zhangsan" },
+          "nickname": { "type": "string", "description": "昵称（仅登录返回）", "example": "张三" }
+        }
+      },
+      "HealthProfileDTO": {
+        "type": "object",
+        "properties": {
+          "gender": { "type": "string", "description": "性别", "enum": ["MALE", "FEMALE", "OTHER"], "example": "MALE" },
+          "birthDate": { "type": "string", "format": "date", "description": "出生日期", "example": "1990-01-15" },
+          "heightCm": { "type": "number", "description": "身高 (cm)", "minimum": 50, "maximum": 250, "example": 175.0 },
+          "currentWeightKg": { "type": "number", "description": "当前体重 (kg)", "minimum": 20, "maximum": 300, "example": 70.5 },
+          "targetWeightKg": { "type": "number", "description": "目标体重 (kg)", "minimum": 20, "maximum": 300, "example": 65.0 },
+          "activityLevel": { "type": "string", "description": "活动水平", "enum": ["SEDENTARY", "LIGHT", "MODERATE", "VERY_ACTIVE"], "example": "MODERATE" },
+          "dietPreference": { "type": "string", "description": "饮食偏好", "enum": ["OMNIVORE", "VEGETARIAN", "VEGAN", "KETO"], "example": "OMNIVORE" },
+          "allergies": { "type": "string", "description": "过敏信息（JSON 数组字符串）", "example": "[\"花生\", \"牛奶\"]" },
+          "dailyCalorieGoal": { "type": "integer", "description": "每日热量目标 (kcal)", "minimum": 500, "maximum": 5000, "example": 2000 },
+          "dailyProteinG": { "type": "integer", "description": "每日蛋白质目标 (g)", "minimum": 20, "maximum": 300, "example": 80 },
+          "exerciseFrequency": { "type": "integer", "description": "每周运动天数", "minimum": 1, "maximum": 7, "example": 4 },
+          "exerciseDuration": { "type": "integer", "description": "每次运动时长 (分钟)", "minimum": 10, "maximum": 180, "example": 45 }
+        }
+      },
+      "HealthProfile": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "description": "档案 ID", "example": 1 },
+          "userId": { "type": "integer", "description": "用户 ID", "example": 1 },
+          "gender": { "type": "string", "example": "MALE" },
+          "birthDate": { "type": "string", "format": "date", "example": "1990-01-15" },
+          "heightCm": { "type": "number", "example": 175.0 },
+          "currentWeightKg": { "type": "number", "example": 70.5 },
+          "targetWeightKg": { "type": "number", "example": 65.0 },
+          "activityLevel": { "type": "string", "example": "MODERATE" },
+          "dietPreference": { "type": "string", "example": "OMNIVORE" },
+          "allergies": { "type": "string", "example": "[\"花生\", \"牛奶\"]" },
+          "dailyCalorieGoal": { "type": "integer", "example": 2000 },
+          "dailyProteinG": { "type": "integer", "example": 80 },
+          "exerciseFrequency": { "type": "integer", "example": 4 },
+          "exerciseDuration": { "type": "integer", "example": 45 },
+          "createdAt": { "type": "string", "format": "date-time", "description": "创建时间" },
+          "updatedAt": { "type": "string", "format": "date-time", "description": "更新时间" }
+        }
+      },
+      "WeightRecordDTO": {
+        "type": "object",
+        "required": ["weightKg"],
+        "properties": {
+          "weightKg": { "type": "number", "description": "体重 (kg)", "minimum": 20, "maximum": 300, "example": 70.5 },
+          "note": { "type": "string", "description": "备注（可选）", "example": "本周饮食控制较好" },
+          "recordedAt": { "type": "string", "format": "date", "description": "记录日期（可选，默认当天）", "example": "2026-06-09" }
+        }
+      },
+      "WeightRecord": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "userId": { "type": "integer", "example": 1 },
+          "weightKg": { "type": "number", "example": 70.5 },
+          "bmi": { "type": "number", "description": "BMI 值", "example": 23.0 },
+          "note": { "type": "string", "example": "本周饮食控制较好" },
+          "recordedAt": { "type": "string", "format": "date", "description": "记录日期", "example": "2026-06-09" },
+          "createdAt": { "type": "string", "format": "date-time", "description": "创建时间" }
+        }
+      },
+      "CheckWeekResponse": {
+        "type": "object",
+        "properties": {
+          "recorded": { "type": "boolean", "description": "本周是否已记录", "example": false }
+        }
+      },
+      "MealItem": {
+        "type": "object",
+        "properties": {
+          "mealType": { "type": "string", "description": "餐类", "enum": ["BREAKFAST", "LUNCH", "DINNER", "SNACK"], "example": "BREAKFAST" },
+          "foodName": { "type": "string", "description": "食物名称", "example": "燕麦牛奶粥" },
+          "portionG": { "type": "integer", "description": "份量 (g)", "example": 250 },
+          "calories": { "type": "integer", "description": "热量 (kcal)", "example": 320 },
+          "proteinG": { "type": "number", "description": "蛋白质 (g)", "example": 12.5 },
+          "carbsG": { "type": "number", "description": "碳水 (g)", "example": 45.0 },
+          "fatG": { "type": "number", "description": "脂肪 (g)", "example": 8.0 },
+          "recipe": { "type": "string", "description": "做法说明", "example": "燕麦片50g加牛奶200ml煮5分钟，加少许蜂蜜" }
+        }
+      },
+      "ExerciseItem": {
+        "type": "object",
+        "properties": {
+          "exerciseName": { "type": "string", "description": "运动名称", "example": "哑铃卧推" },
+          "sets": { "type": "integer", "description": "组数", "example": 4 },
+          "reps": { "type": "integer", "description": "次数/组", "example": 12 },
+          "durationMin": { "type": "integer", "description": "时长 (分钟)", "example": 15 },
+          "intensity": { "type": "string", "description": "强度", "enum": ["LOW", "MEDIUM", "HIGH"], "example": "MEDIUM" },
+          "notes": { "type": "string", "description": "备注", "example": "注意控制离心收缩" }
+        }
+      },
+      "DayPlan": {
+        "type": "object",
+        "properties": {
+          "dayOfWeek": { "type": "integer", "description": "星期几 (1=周一, 7=周日)", "minimum": 1, "maximum": 7, "example": 1 },
+          "dayName": { "type": "string", "description": "星期名称", "example": "周一" },
+          "meals": { "type": "array", "items": { "$ref": "#/components/schemas/MealItem" } },
+          "exercises": { "type": "array", "items": { "$ref": "#/components/schemas/ExerciseItem" } }
+        }
+      },
+      "PlanResponse": {
+        "type": "object",
+        "properties": {
+          "weekStartDate": { "type": "string", "format": "date", "description": "本周起始日期（周一）", "example": "2026-06-08" },
+          "days": { "type": "array", "items": { "$ref": "#/components/schemas/DayPlan" } }
+        }
+      },
+      "WeightAnalysisResponse": {
+        "type": "object",
+        "description": "AI 体重趋势分析 + 优化后的计划",
+        "properties": {
+          "trend": { "type": "string", "description": "趋势", "enum": ["LOSING", "GAINING", "STABLE"], "example": "LOSING" },
+          "changeKg": { "type": "number", "description": "总变化量 (kg)", "example": -1.5 },
+          "ratePerWeek": { "type": "number", "description": "每周变化速率 (kg/周)", "example": -0.5 },
+          "assessment": { "type": "string", "description": "AI 评估文字", "example": "您的体重正在稳步下降，当前减重速度健康合理..." },
+          "suggestion": { "type": "string", "description": "AI 建议文字", "example": "建议继续保持当前饮食结构，可适当增加有氧运动..." },
+          "optimizedPlan": { "$ref": "#/components/schemas/PlanResponse", "description": "优化后的新计划" },
+          "planChanged": { "type": "boolean", "description": "计划是否有实质变化", "example": true },
+          "planChangeSummary": { "type": "string", "description": "计划变化摘要", "example": "增加了周二和周四的有氧运动时长，减少了晚餐碳水比例" }
+        }
+      },
+      "UserProfile_AI": {
+        "type": "object",
+        "description": "AI 服务的用户档案（与后端 HealthProfile 字段对齐）",
+        "properties": {
+          "gender": { "type": "string", "nullable": true, "example": "MALE" },
+          "age": { "type": "integer", "nullable": true, "example": 34 },
+          "height_cm": { "type": "number", "nullable": true, "example": 175.0 },
+          "current_weight_kg": { "type": "number", "nullable": true, "example": 70.5 },
+          "target_weight_kg": { "type": "number", "nullable": true, "example": 65.0 },
+          "activity_level": { "type": "string", "nullable": true, "enum": ["SEDENTARY", "LIGHT", "MODERATE", "VERY_ACTIVE"], "example": "MODERATE" },
+          "diet_preference": { "type": "string", "nullable": true, "enum": ["OMNIVORE", "VEGETARIAN", "VEGAN", "KETO"], "example": "OMNIVORE" },
+          "allergies": { "type": "string", "nullable": true, "description": "JSON 数组字符串", "example": "[\"花生\"]" },
+          "daily_calorie_goal": { "type": "integer", "nullable": true, "example": 2000 },
+          "daily_protein_g": { "type": "integer", "nullable": true, "example": 80 },
+          "exercise_frequency": { "type": "integer", "nullable": true, "description": "每周运动天数", "example": 4 },
+          "exercise_duration": { "type": "integer", "nullable": true, "description": "每次运动时长", "example": 45 }
+        }
+      },
+      "WeightEntry_AI": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string", "description": "日期", "example": "2026-06-01" },
+          "weight_kg": { "type": "number", "description": "体重 (kg)", "example": 70.5 }
+        }
+      },
+      "WeightHistory_AI": {
+        "type": "object",
+        "properties": {
+          "records": { "type": "array", "items": { "$ref": "#/components/schemas/WeightEntry_AI" } }
+        }
+      },
+      "WeightTrend_AI": {
+        "type": "object",
+        "properties": {
+          "records": { "type": "array", "items": { "$ref": "#/components/schemas/WeightEntry_AI" } },
+          "change_kg": { "type": "number", "nullable": true, "description": "总变化量 (kg)", "example": -1.5 },
+          "trend": { "type": "string", "nullable": true, "description": "趋势", "enum": ["LOSING", "GAINING", "STABLE"], "example": "LOSING" }
+        }
+      },
+      "GeneratePlanRequest_AI": {
+        "type": "object",
+        "required": ["user_profile"],
+        "properties": {
+          "user_profile": { "$ref": "#/components/schemas/UserProfile_AI" },
+          "weight_history": { "$ref": "#/components/schemas/WeightHistory_AI", "nullable": true }
+        }
+      },
+      "OptimizePlanRequest_AI": {
+        "type": "object",
+        "required": ["user_profile", "weight_trend", "current_plan"],
+        "properties": {
+          "user_profile": { "$ref": "#/components/schemas/UserProfile_AI" },
+          "weight_trend": { "$ref": "#/components/schemas/WeightTrend_AI" },
+          "current_plan": { "type": "object", "description": "当前计划 JSON（PlanResponse 结构）" }
+        }
+      },
+      "AnalyzeWeightRequest_AI": {
+        "type": "object",
+        "required": ["weight_history", "user_profile"],
+        "properties": {
+          "weight_history": { "$ref": "#/components/schemas/WeightHistory_AI" },
+          "user_profile": { "$ref": "#/components/schemas/UserProfile_AI" }
+        }
+      },
+      "WeeklyPlanResponse_AI": {
+        "type": "object",
+        "properties": {
+          "week_start_date": { "type": "string", "description": "周起始日期", "example": "2026-06-08" },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day_of_week": { "type": "integer", "example": 1 },
+                "day_name": { "type": "string", "example": "周一" },
+                "meals": { "type": "array", "items": { "$ref": "#/components/schemas/MealItem" } },
+                "exercises": { "type": "array", "items": { "$ref": "#/components/schemas/ExerciseItem" } }
+              }
+            }
+          }
+        }
+      },
+      "WeightAnalysis_AI": {
+        "type": "object",
+        "properties": {
+          "trend": { "type": "string", "enum": ["LOSING", "GAINING", "STABLE"], "example": "LOSING" },
+          "change_kg": { "type": "number", "example": -1.5 },
+          "rate_per_week": { "type": "number", "nullable": true, "example": -0.5 },
+          "assessment": { "type": "string", "example": "体重稳步下降..." },
+          "suggestion": { "type": "string", "example": "建议保持..." }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string", "description": "错误信息" },
+          "status": { "type": "integer", "description": "HTTP 状态码" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/register": {
+      "post": {
+        "tags": ["认证"],
+        "summary": "用户注册",
+        "description": "创建新用户账号，成功后返回 JWT Token",
+        "operationId": "register",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterRequest" },
+              "example": {
+                "username": "zhangsan",
+                "email": "zhangsan@example.com",
+                "password": "123456",
+                "nickname": "张三"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "注册成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" },
+                "example": {
+                  "token": "eyJhbGciOiJIUzI1NiJ9...",
+                  "userId": 1,
+                  "username": "zhangsan"
+                }
+              }
+            }
+          },
+          "400": { "description": "参数校验失败 / 用户名或邮箱已存在", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        },
+        "security": []
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["认证"],
+        "summary": "用户登录",
+        "description": "使用用户名和密码登录，返回 JWT Token",
+        "operationId": "login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" },
+              "example": {
+                "username": "zhangsan",
+                "password": "123456"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "登录成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" },
+                "example": {
+                  "token": "eyJhbGciOiJIUzI1NiJ9...",
+                  "userId": 1,
+                  "username": "zhangsan",
+                  "nickname": "张三"
+                }
+              }
+            }
+          },
+          "400": { "description": "用户名或密码错误", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        },
+        "security": []
+      }
+    },
+    "/api/profile": {
+      "get": {
+        "tags": ["健康档案"],
+        "summary": "获取健康档案",
+        "description": "获取当前登录用户的健康档案信息",
+        "operationId": "getProfile",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthProfile" }
+              }
+            }
+          },
+          "401": { "description": "未认证" }
+        }
+      },
+      "put": {
+        "tags": ["健康档案"],
+        "summary": "创建/更新健康档案",
+        "description": "创建或更新当前用户的健康档案（不存在则创建，存在则更新）",
+        "operationId": "saveProfile",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/HealthProfileDTO" },
+              "example": {
+                "gender": "MALE",
+                "birthDate": "1990-01-15",
+                "heightCm": 175.0,
+                "currentWeightKg": 70.5,
+                "targetWeightKg": 65.0,
+                "activityLevel": "MODERATE",
+                "dietPreference": "OMNIVORE",
+                "allergies": "[\"花生\", \"牛奶\"]",
+                "dailyCalorieGoal": 2000,
+                "dailyProteinG": 80,
+                "exerciseFrequency": 4,
+                "exerciseDuration": 45
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthProfile" }
+              }
+            }
+          },
+          "400": { "description": "参数校验失败" },
+          "401": { "description": "未认证" }
+        }
+      }
+    },
+    "/api/weight": {
+      "post": {
+        "tags": ["体重记录"],
+        "summary": "记录本周体重",
+        "description": "记录本周体重数据，每周只能记录一条，重复记录会覆盖更新",
+        "operationId": "recordWeight",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WeightRecordDTO" },
+              "example": {
+                "weightKg": 70.5,
+                "note": "本周饮食控制较好"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "记录成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WeightRecord" }
+              }
+            }
+          },
+          "400": { "description": "参数校验失败" },
+          "401": { "description": "未认证" }
+        }
+      }
+    },
+    "/api/weight/record-and-optimize": {
+      "post": {
+        "tags": ["体重记录"],
+        "summary": "【核心】记录体重 + AI 分析 + 优化计划",
+        "description": "一站式接口：记录本周体重 → AI 分析体重趋势 → 生成优化后的饮食运动计划。这是前端每周记录体重时调用的核心接口。",
+        "operationId": "recordAndOptimize",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WeightRecordDTO" },
+              "example": {
+                "weightKg": 70.5,
+                "note": "本周饮食控制较好"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功，返回分析结果和新计划",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WeightAnalysisResponse" }
+              }
+            }
+          },
+          "400": { "description": "参数校验失败" },
+          "401": { "description": "未认证" }
+        }
+      }
+    },
+    "/api/weight/history": {
+      "get": {
+        "tags": ["体重记录"],
+        "summary": "体重历史",
+        "description": "获取当前用户的体重记录历史列表",
+        "operationId": "getWeightHistory",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/WeightRecord" }
+                }
+              }
+            }
+          },
+          "401": { "description": "未认证" }
+        }
+      }
+    },
+    "/api/weight/check-this-week": {
+      "get": {
+        "tags": ["体重记录"],
+        "summary": "检查本周是否已记录",
+        "description": "判断当前用户本周是否已经记录过体重",
+        "operationId": "checkThisWeek",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CheckWeekResponse" },
+                "example": { "recorded": false }
+              }
+            }
+          },
+          "401": { "description": "未认证" }
+        }
+      }
+    },
+    "/api/plans/generate": {
+      "post": {
+        "tags": ["计划管理"],
+        "summary": "生成一周计划",
+        "description": "调用 AI 服务生成新的一周饮食+运动计划",
+        "operationId": "generatePlan",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "生成成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PlanResponse" }
+              }
+            }
+          },
+          "401": { "description": "未认证" }
+        }
+      }
+    },
+    "/api/plans/current": {
+      "get": {
+        "tags": ["计划管理"],
+        "summary": "获取当前周计划",
+        "description": "获取当前用户本周的饮食+运动计划，如不存在则自动生成",
+        "operationId": "getCurrentPlan",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PlanResponse" }
+              }
+            }
+          },
+          "401": { "description": "未认证" }
+        }
+      }
+    },
+    "/api/plans/optimize": {
+      "post": {
+        "tags": ["计划管理"],
+        "summary": "优化计划（基于体重记录）",
+        "description": "根据最近的体重记录优化当前计划（保留兼容接口，推荐使用 /api/weight/record-and-optimize）",
+        "operationId": "optimizePlan",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "优化成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PlanResponse" }
+              }
+            }
+          },
+          "401": { "description": "未认证" }
+        }
+      }
+    },
+    "/api/plans/trend-analysis": {
+      "get": {
+        "tags": ["计划管理"],
+        "summary": "AI 体重趋势分析",
+        "description": "获取 AI 对用户体重变化趋势的分析（仅分析，不修改计划）",
+        "operationId": "getTrendAnalysis",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WeightAnalysisResponse" }
+              }
+            }
+          },
+          "401": { "description": "未认证" }
+        }
+      }
+    },
+    "/api/plans/history": {
+      "get": {
+        "tags": ["计划管理"],
+        "summary": "历史计划",
+        "description": "获取当前用户的历史计划列表",
+        "operationId": "getPlanHistory",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/PlanResponse" }
+                }
+              }
+            }
+          },
+          "401": { "description": "未认证" }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "tags": ["AI 服务"],
+        "summary": "AI 服务信息",
+        "operationId": "aiRoot",
+        "servers": [{ "url": "http://localhost:8000" }],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "example": { "service": "Healify AI", "version": "0.1.0" }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/ai/health": {
+      "get": {
+        "tags": ["AI 服务"],
+        "summary": "AI 服务健康检查",
+        "operationId": "aiHealth",
+        "servers": [{ "url": "http://localhost:8000" }],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "example": { "status": "ok", "provider": "deepseek" }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/ai/generate-plan": {
+      "post": {
+        "tags": ["AI 服务"],
+        "summary": "生成一周计划（AI）",
+        "description": "调用 LLM 生成个性化的一周饮食+运动计划",
+        "operationId": "aiGeneratePlan",
+        "servers": [{ "url": "http://localhost:8000" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GeneratePlanRequest_AI" },
+              "example": {
+                "user_profile": {
+                  "gender": "MALE",
+                  "age": 34,
+                  "height_cm": 175.0,
+                  "current_weight_kg": 70.5,
+                  "target_weight_kg": 65.0,
+                  "activity_level": "MODERATE",
+                  "diet_preference": "OMNIVORE",
+                  "daily_calorie_goal": 2000,
+                  "daily_protein_g": 80,
+                  "exercise_frequency": 4,
+                  "exercise_duration": 45
+                },
+                "weight_history": {
+                  "records": [
+                    { "date": "2026-05-26", "weight_kg": 72.0 },
+                    { "date": "2026-06-02", "weight_kg": 70.5 }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "生成成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WeeklyPlanResponse_AI" }
+              }
+            }
+          },
+          "500": { "description": "AI 生成失败" }
+        },
+        "security": []
+      }
+    },
+    "/api/ai/optimize-plan": {
+      "post": {
+        "tags": ["AI 服务"],
+        "summary": "优化计划（AI）",
+        "description": "根据体重变化趋势优化现有计划",
+        "operationId": "aiOptimizePlan",
+        "servers": [{ "url": "http://localhost:8000" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/OptimizePlanRequest_AI" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "优化成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WeeklyPlanResponse_AI" }
+              }
+            }
+          },
+          "500": { "description": "AI 优化失败" }
+        },
+        "security": []
+      }
+    },
+    "/api/ai/analyze-weight": {
+      "post": {
+        "tags": ["AI 服务"],
+        "summary": "分析体重趋势（AI）",
+        "description": "AI 分析体重变化趋势并给出评估和建议",
+        "operationId": "aiAnalyzeWeight",
+        "servers": [{ "url": "http://localhost:8000" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AnalyzeWeightRequest_AI" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "分析成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WeightAnalysis_AI" }
+              }
+            }
+          },
+          "500": { "description": "AI 分析失败" }
+        },
+        "security": []
+      }
+    },
+    "/api/ai/analyze-and-optimize": {
+      "post": {
+        "tags": ["AI 服务"],
+        "summary": "【组合】分析趋势 + 优化计划（AI）",
+        "description": "一次 LLM 调用完成体重趋势分析和计划优化",
+        "operationId": "aiAnalyzeAndOptimize",
+        "servers": [{ "url": "http://localhost:8000" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/OptimizePlanRequest_AI" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "analysis": { "$ref": "#/components/schemas/WeightAnalysis_AI" },
+                    "optimized_plan": { "$ref": "#/components/schemas/WeeklyPlanResponse_AI" }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "description": "AI 分析与优化失败" }
+        },
+        "security": []
+      }
+    }
+  }
+}
