@@ -17,18 +17,19 @@ public class PlanController {
 
     private final PlanService planService;
 
-    /** 生成一周计划（调用 AI） */
+    /** 生成一周计划（调用 AI），传 force=true 可强制重新生成 */
     @PostMapping("/generate")
-    public ResponseEntity<PlanResponse> generatePlan(Authentication auth) {
+    public ResponseEntity<PlanResponse> generatePlan(Authentication auth,
+                                                     @RequestParam(required = false, defaultValue = "false") boolean force) {
         Long userId = (Long) auth.getPrincipal();
-        return ResponseEntity.ok(planService.generateWeeklyPlan(userId));
+        return ResponseEntity.ok(planService.generateWeeklyPlan(userId, force));
     }
 
     /** 获取当前周计划 */
     @GetMapping("/current")
     public ResponseEntity<PlanResponse> getCurrentPlan(Authentication auth) {
         Long userId = (Long) auth.getPrincipal();
-        return ResponseEntity.ok(planService.generateWeeklyPlan(userId));
+        return ResponseEntity.ok(planService.generateWeeklyPlan(userId, false));
     }
 
     /** 记录体重后优化计划（保留兼容） */

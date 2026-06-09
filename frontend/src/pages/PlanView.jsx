@@ -39,7 +39,7 @@ export default function PlanView() {
     setGenerating(true);
     setError('');
     try {
-      const data = await planAPI.generate();
+      const data = await planAPI.generate(true);
       setPlan(data);
     } catch (err) {
       setError(err.message);
@@ -80,9 +80,11 @@ export default function PlanView() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="page-title mb-0">📅 我的计划</h1>
-        <button onClick={handleGenerate} disabled={generating} className="btn-secondary text-sm">
-          {generating ? '生成中...' : '🔄 重新生成'}
-        </button>
+        {plan?.needRegenerate && (
+          <button onClick={handleGenerate} disabled={generating} className="btn-secondary text-sm">
+            {generating ? '生成中...' : '🔄 重新生成'}
+          </button>
+        )}
       </div>
 
       {plan?.weekStartDate && (

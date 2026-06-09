@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.TextStyle;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
@@ -43,15 +44,15 @@ public class PlanService {
      * 首次生成时，若已有体重历史，会将趋势作为上下文传给 LLM。
      */
     @Transactional
-    public PlanResponse generateWeeklyPlan(Long userId) {
+    public PlanResponse generateWeeklyPlan(Long userId, boolean force) {
         HealthProfile profile = profileRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("请先完善健康档案"));
 
         LocalDate weekStart = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
 
-        // 若本周已有 AI 计划，直接返回
+        // 若本周已有 AI 计划且未强制重建，直接返回
         List<MealPlan> existingMeals = mealPlanRepository.findByUserIdAndWeekStartDate(userId, weekStart);
-        if (!existingMeals.isEmpty() && existingMeals.get(0).getGeneratedByAi()) {
+        if (!force && !existingMeals.isEmpty() && existingMeals.get(0).getGeneratedByAi()) {
             return buildPlanResponse(userId, weekStart);
         }
 
@@ -285,7 +286,30 @@ public class PlanService {
                     .build());
         }
 
-        return PlanResponse.builder().weekStartDate(weekStart).days(days).build();
+        // 仅当前周判断是否需要重新生成：档案有变化且计划是基于旧档案生成的
+        boolean isCurrentWeek = weekStart.equals(LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)));
+        Boolean needRegenerate = null;
+        if (isCurrentWeek) {
+            if (meals.isEmpty()) {
+                needRegenerate = true;
+            } else {
+                HealthProfile profile = profileRepository.findByUserId(userId).orElse(null);
+                LocalDateTime latestPlanTime = meals.stream()
+                        .map(MealPlan::getCreatedAt)
+                        .filter(Objects::nonNull)
+                        .max(LocalDateTime::compareTo)
+                        .orElse(null);
+                needRegenerate = profile != null
+                        && profile.getUpdatedAt() != null
+                        && latestPlanTime != null
+                        && profile.getUpdatedAt().isAfter(latestPlanTime);
+            }
+        }
+
+        return PlanResponse.builder()
+                .weekStartDate(weekStart).days(days)
+                .needRegenerate(needRegenerate)
+                .build();
     }
 
     private void parseAndSavePlan(Long userId, LocalDate weekStart, JsonNode aiResponse) {

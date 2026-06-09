@@ -14,6 +14,7 @@ import java.util.List;
 public class PlanResponse {
     private LocalDate weekStartDate;
     private List<DayPlan> days;
+    private Boolean needRegenerate;
 
     @Data
     @Builder

@@ -82,9 +82,9 @@ export default function Dashboard() {
       bmi: w.bmi ? parseFloat(w.bmi) : null,
     }));
 
-  const latestWeight = weights.length > 0 ? parseFloat(weights[0].weightKg) : null;
-  const prevWeight = weights.length > 1 ? parseFloat(weights[1].weightKg) : null;
-  const weightChange = latestWeight && prevWeight ? (latestWeight - prevWeight).toFixed(1) : null;
+  const latestWeight = profile?.currentWeightKg != null
+    ? parseFloat(profile.currentWeightKg)
+    : (weights.length > 0 ? parseFloat(weights[0].weightKg) : null);
 
   return (
     <div>
@@ -97,11 +97,6 @@ export default function Dashboard() {
           <div className="text-3xl mb-1">⚖️</div>
           <div className="text-2xl font-bold text-healify-600">{latestWeight ?? '--'}</div>
           <div className="text-xs text-gray-500">当前体重 (kg)</div>
-          {weightChange && (
-            <div className={`text-xs mt-1 ${parseFloat(weightChange) < 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {parseFloat(weightChange) > 0 ? '+' : ''}{weightChange} kg
-            </div>
-          )}
         </div>
         <div className="card text-center">
           <div className="text-3xl mb-1">🎯</div>

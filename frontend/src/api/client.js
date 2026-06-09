@@ -43,7 +43,7 @@ export const profileAPI = {
 
 // ===== Plans =====
 export const planAPI = {
-  generate: () => api.post('/plans/generate'),
+  generate: (force) => api.post('/plans/generate', null, { params: { force: force || false } }),
   getCurrent: () => api.get('/plans/current'),
   optimize: () => api.post('/plans/optimize'),
   getHistory: () => api.get('/plans/history'),

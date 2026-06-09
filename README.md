@@ -52,7 +52,7 @@ uvicorn main:app --port 8000 --reload
 
 ```bash
 cd backend
-./mvnw spring-boot:run
+mvnw spring-boot:run
 ```
 
 ### 4. 启动前端
