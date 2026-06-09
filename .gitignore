@@ -72,3 +72,6 @@ docker-compose.override.yml
 *.tmp
 *.temp
 logs/
+
+
+test_ai_features.py
